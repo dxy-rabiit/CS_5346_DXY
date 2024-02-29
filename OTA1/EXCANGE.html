@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>exchange_rate</title>
+        <script src="d3.min.js"></script>
+    </head>
+    <body style="text-align: center">
+    <svg width="1250" height="720" id="mainsvg" class="svgs" style="background-color: #ffffff;display: block; margin: 0 auto;"></svg>
+    
+    <script>
+        const svg = d3.select('#mainsvg');
+        const width = svg.attr('width');
+        const height = svg.attr('height');
+        const margin = {top: 100, right: 120, bottom: 100, left: 120};
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+        const keyValue=d=>d['country']
+       //const xValue=d=>Math.log(d['percapitaincome'] + 1); 
+        //const yValue=d=>Math.log(d['percapitaincome']+1);
+        const xValue=d=>d['country']; 
+        const yValue=d=>d['exchange_rate'];
+        let xScale, yScale;
+        let maxX,maxY;
+        const xAxisLabel = 'country';
+        const yAxisLabel = 'exchange_rate';
+        let aduration = 500;
+    
+
+
+        const color = {
+            "United States of America":"#ff1c12",
+            "India": "#de5991",
+            "Japan": "#759AA0",
+            "United Kingdom": "#E69D87",
+            "Hong Kong": "#be3259",
+            "China": "#EA7E53",
+            "Germany": "#EEDD78",
+            "France": "#9359b1",
+            "Spain": "#47c0d4",
+        };
+
+     //  初始化 rederinit
+     const rederinit=function(data,seq){
+        // extent取最大最小
+        //比例尺
+        
+       // xScale=d3.scaleLinear().domain([0,d3.max(data,d=>d.percapitaincome)]).range([0,innerWidth]).nice();
+
+        xScale=d3.scaleBand().domain(data.map(d=>d.country)).
+        range([0,innerWidth]).padding(0.5);
+        yScale=d3.scaleLinear().domain(d3.extent(data,yValue)).
+        range([0,innerHeight]).nice();
+
+        maxY = yScale(d3.max(data, yValue));
+
+        //画一个整体的大图
+        const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`)
+        .attr('id','maingroup');
+
+        //axes
+        const yAxis=d3.axisLeft(yScale).
+        //坐标轴长度 刻度线和标签的距离
+        tickSize(-innerWidth).tickPadding(10);
+        const xAxis=d3.axisBottom(xScale).
+        tickSize(innerHeight).tickPadding(10);
+
+        //xy轴 作为group 设置xy轴的名称以及样式内容
+        let yAxisGroup=g.append('g').call(yAxis)
+        .attr('id','yaxis')
+        yAxisGroup.append('text')
+        .attr('font-size', '2em')
+        .attr('transform', `rotate(-90)`)
+        .attr('x', -innerHeight / 2)
+        .attr('y', -60)
+        .attr('fill', '#333333')
+        .text(yAxisLabel)
+        .attr('text-anchor', 'middle');
+
+        let xAxisGroup = g.append('g').call(xAxis)
+           // .attr('transform', `translate(${0}, ${innerHeight})`)
+            .attr('id', 'xaxis');
+            xAxisGroup.append('text')
+            .attr('font-size', '2em')
+            .attr('y', innerHeight+40)
+            .attr('x', innerWidth / 2)
+            .attr('fill', '#333333')
+            .text(xAxisLabel);
+        
+        //图例 并画出来
+        let legend_color=Object.values(color);
+        let legend_text=Object.keys(color);
+        //图例的组 定位
+        var legend=d3.select('#maingroup').selectAll('.legend')
+        .data(legend_text).join('g')
+        .attr('class','legend')
+        .attr('transform',function(d,i){
+            return "translate(" + (innerWidth + 10) + "," + (i * 25 + 300) + ")"; 
+        });
+
+        //图例的颜色方块
+        legend.append("rect")
+        .data(legend_color) 
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", 30)
+        .attr("height", 20)
+        .style("fill", d => d);
+
+        //图例内容和文字
+        legend.append("text")
+            .attr("x", 40)
+            .attr("y", 9)
+            .attr("dy", ".5em")
+            .attr("text-anchor", "start")
+            .text(d => d); 
+
+            // date
+        g.append("text")
+        .attr('id', 'date_text')
+        .attr("x", innerWidth  -20)
+        .attr("y", innerHeight - 50)
+        .attr("dy", ".5em")
+        .style("text-anchor", "end")
+        .attr("fill", "#504f4f")
+        .attr('font-size', '6em')
+        .attr('font-weight', 'bold')
+        .text(' ');
+
+     };
+
+     // 分别显示后续的   renderupdate 开始动画效果
+     const renderupdate=async function(seq){
+        const g=d3.select('#maingroup');
+        d3.select('#date_text').text(seq[0]['year']);
+        let  transition = d3.transition().duration(aduration).ease(d3.easeLinear); 
+        let transition1=d3.transition().duration(3000).ease(d3.easeElastic);
+
+        let barUpdates = g.selectAll('.data_rect')
+        .data(seq)
+        .join('rect')
+        .attr('fill', d => color[keyValue(d)])
+        .attr('opacity', 0.8)
+        .transition(transition)
+        .attr('x', d => xScale(xValue(d)))
+        .attr('y', yScale(0)) // 将条形的起点调整到条形中心
+        .attr('width', d => xScale.bandwidth()) // 设定条形的宽度
+        .attr('height',d=>yScale(yValue(d)))// 设定条形的高度
+       .transition(transition); // 添加过渡动画;
+
+       barUpdates
+    .transition(transition)
+    .duration(500)
+    .attr('y', height) // 将旧条形图的 y 坐标设置为图表底部
+    .attr('height', 0) // 将旧条形图的高度设置为 0
+    .remove(); // 移除旧的条形图元素
+        
+        let textupdates = g.selectAll('.province_text').data(seq).join('text')
+            .attr("class", "province_text")
+            .attr("dy", "1em")
+            .style("text-anchor", "middle")
+            .attr("fill", "#333333")
+            .text( d => d.exchange_rate)
+            .transition(transition1)
+            .attr('x', d => xScale(xValue(d)))
+            .attr('y', d => yScale(yValue(d)));
+        
+            await transition1.end();
+     };
+
+
+        d3.csv('Economic Data - 9 Countries (1980-2020).csv').then(async function(data){
+            data=data.filter(d=>{return keyValue(d)!=='总计'})
+            data.forEach(datum=>{
+                //每行进行预处理
+               // datum['gdppercent'] = +(datum['gdppercent']);
+                datum['exchange_rate'] = +(datum['exchange_rate']);
+                
+            });
+            //日期去重 每个日期只出现一次
+            alldates=Array.from(new Set(data.map(datum=>datum['year']=parseInt(datum['year']))));
+            console.log(alldates)
+            
+            //建立一个空数组 遍历每个日期时候 向数组中添加一个空数组，用于存放这个日期下的值
+            sequential=[];
+            alldates.forEach(datum=>{
+                sequential.push([]);
+            });
+            data.forEach(datum=>{
+                sequential[alldates.indexOf(datum['year'])].push(datum);
+            });
+            rederinit(data,sequential[0]);
+            console.log(sequential);
+            for(let i=0;i<sequential.length;i++){
+                await renderupdate(sequential[i]);
+            }
+        })
+        
+    </script>
+    </body>
+</html>

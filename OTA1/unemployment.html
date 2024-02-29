@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>unemploymentrate</title>
+        <script src="d3.min.js"></script>
+    </head>
+
+    <body>
+        <svg width="1400" height="720" id="mainsvg" class="svgs"></svg>
+        <script>
+            const svg=d3.select('svg');
+            const width=svg.attr('width');
+            const height=svg.attr('height');
+            const margin={top: 60, right:150, bottom: 60, left: 150};
+            const innerWidth=width-margin.left-margin.right*2
+            const innerHeight=height-margin.top-margin.bottom
+            //整个大的图作为一个g 将其移动
+            const mainGroup=svg.append('g').attr('transform',`translate(${margin.left}, ${margin.top})`).attr('id','maingroup');
+            //const xScale=d3.scaleLinear()
+            //const yScale=d3.scaleBand()
+            const yScale=d3.scaleLinear()
+            const xScale=d3.scaleBand()
+            const keyValue=d=>d['country']
+
+            //折线
+            // 创建折线生成器
+            const line = d3.line()
+            .x(d => xScale(d.year))
+            .y(d => yScale(d.unemploymentrate)).curve(d3.curveCardinal);;
+
+            const color = {
+                "United States of America":"#ff1c12",
+                "India": "#de5991",
+                "Japan": "#759AA0",
+                "United Kingdom": "#E69D87",
+                "Hong Kong": "#be3259",
+                "China": "#EA7E53",
+                "Germany": "#EEDD78",
+                "France": "#9359b1",
+                "Spain": "#47c0d4",
+            };
+            
+
+
+
+            d3.csv('Economic Data - 9 Countries (1980-2020).csv').then(data=>{
+                console.log(data); 
+                //scale 比例尺
+                //map 对于数组中每个数，应用一个新的函数
+                data.forEach(datum=>{
+                    //每行进行预处理
+                   // datum['gdppercent'] = +(datum['gdppercent']);
+                    if(datum['unemploymentrate'] == null){
+                        datum['unemploymentrate'] = sum(datum['unemploymentrate']/count(datum['unemploymentrate']));
+                    }
+                    
+                });
+            
+                xScale.domain(data.map(d=>d.year)).range([0,innerWidth]).padding(0.2);
+                yScale.domain([0,d3.max(data,d=>d.unemploymentrate)]).range([0,innerHeight]);
+
+                mainGroup.selectAll(".line")
+                .data(data)
+                .enter()
+                .append("path")
+                .attr("class", "line")
+                .attr("fill", "none")
+                .attr("stroke", d => color[d.country])  // 根据国家从颜色字典中获取颜色值
+                .attr("stroke-width", 2)
+                .attr("d", d => line(data.filter(item => item.country === d.country)));
+
+
+                //定义坐标轴
+                const xAxisMethod=d3.axisBottom(xScale).tickFormat(d3.format("d"));;
+                const yAxisMethod=d3.axisLeft(yScale);
+                //call 绘制坐标轴
+                //每个坐标轴作为一个g 包括上面的线和坐标名称
+                const xAxisGroup = mainGroup.append('g').call(xAxisMethod);
+                const yAxisGroup=mainGroup.append('g').call(yAxisMethod);
+                //放到最下
+                //xAxisGroup.attr('transform', `translate(${0}, ${innerHeight})`);
+                xAxisGroup.selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "-.8em")
+                .attr("dy", ".15em")
+                .attr("transform", "rotate(-45)");
+
+                let legend_color=Object.values(color);
+                let legend_text=Object.keys(color);
+                //图例的组 定位
+                var legend=d3.select('#maingroup').selectAll('.legend')
+                .data(legend_text).join('g')
+                .attr('class','legend')
+                .attr('transform',function(d,i){
+                    return "translate(" + (innerWidth-50) + "," + (i*25+350) + ")"; 
+                });
+                console.log(legend_text)
+        
+                //图例的颜色方块
+                legend.append("rect")
+                .data(legend_color) 
+                .attr("x", 0)
+                .attr("y", 0)
+                .attr("width", 20)
+                .attr("height", 20)
+                .style("fill", d => d);
+
+                  //图例内容和文字
+                legend.append("text")
+                .attr("x", 20)
+                .attr("y", 10)
+                .attr("dy", ".3em")
+                .attr("text-anchor", "start")
+                .text(d => d); 
+            }
+            )
+        </script>
+    </body>
+</html>
